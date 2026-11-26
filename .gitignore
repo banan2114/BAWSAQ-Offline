@@ -361,3 +361,15 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# BAWSAQ Offline - local game data
+save.json
+save.json.bak
+save.json.tmp
+
+# ScriptHookVDotNet logs
+ScriptHookVDotNet.log
+ScriptHookVDotNet*.log
+
+# GTA V local mod output
+*.asi
