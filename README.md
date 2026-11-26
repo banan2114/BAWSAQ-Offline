@@ -27,7 +27,7 @@ Example:
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <ScriptHookVDotNet3Path>C:\\Path\\To\\GTA V\\ScriptHookVDotNet3.dll</ScriptHookVDotNet3Path>
+    <ScriptHookVDotNet3Path>C:\Path\To\GTA V\ScriptHookVDotNet3.dll</ScriptHookVDotNet3Path>
   </PropertyGroup>
 </Project>
 ```
@@ -41,7 +41,7 @@ The GTA project imports `Local.props` when it exists and uses `$(ScriptHookVDotN
 3. Restore any required NuGet packages if Visual Studio prompts you.
 4. Build or rebuild the solution.
 
-The solution should build both `BawsaqOffline.Core` and `BawsaqOffline.GTA`. The GTA project's output is written under `BawsaqOffline.GTA\\bin\\x64\\Release\\` for the Release|x64 configuration.
+The solution should build both `BawsaqOffline.Core` and `BawsaqOffline.GTA`. The GTA project's output is written under `BawsaqOffline.GTA\bin\x64\Release\` for the Release|x64 configuration.
 
 ## Notes
 
