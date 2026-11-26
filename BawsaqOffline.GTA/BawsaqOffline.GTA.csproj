@@ -68,6 +68,7 @@
   <ItemGroup>
     <Compile Include="BawsaqScript.cs" />
     <Compile Include="MissionDetector.cs" />
+    <Compile Include="NativePriceProbe.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
