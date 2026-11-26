@@ -373,3 +373,6 @@ ScriptHookVDotNet*.log
 
 # GTA V local mod output
 *.asi
+
+# Local GTA development settings
+BawsaqOffline.GTA/Local.props

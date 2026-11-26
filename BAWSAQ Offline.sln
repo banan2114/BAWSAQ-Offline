@@ -5,7 +5,7 @@ VisualStudioVersion = 17.12.35728.132
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BawsaqOffline.Core", "BawsaqOffline.Core.csproj", "{335430B0-C147-4FBD-AA9E-FEDE9CD224CA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BawsaqOffline.GTA", "..\BawsaqOffline.GTA\BawsaqOffline.GTA.csproj", "{9254A7C3-4645-478A-A81B-DDDBBA8FF272}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BawsaqOffline.GTA", "BawsaqOffline.GTA\BawsaqOffline.GTA.csproj", "{9254A7C3-4645-478A-A81B-DDDBBA8FF272}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
