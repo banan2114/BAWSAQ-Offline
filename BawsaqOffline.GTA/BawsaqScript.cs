@@ -13,6 +13,7 @@ using BawsaqOffline.Core.Engine;
 using BawsaqOffline.Core.Models;
 using BawsaqOffline.Core.Trading;
 using BawsaqOffline.Core.Persistence;
+using BawsaqOffline.GTA;
 
 public class BawsaqScript : Script
 {
@@ -20,6 +21,7 @@ public class BawsaqScript : Script
     private readonly Portfolio portfolio;
     private readonly SaveManager saveManager;
     private readonly List<Stock> bawsaqStocks;
+    private readonly MissionDetector _missionDetector = new MissionDetector();
 
     private int selectedIndex;
     private bool menuOpen;
@@ -146,6 +148,8 @@ public class BawsaqScript : Script
     private void OnTick(object sender, EventArgs e)
     {
         DateTime now = DateTime.Now;
+
+        _missionDetector.Tick();
 
         // Проверяем, прошло ли достаточно игрового времени
         // для очередного обновления рынка.
