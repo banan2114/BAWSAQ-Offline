@@ -1,0 +1,81 @@
+0x002fc39a  op=71  PUSH_CONST_0           sz=1
+0x002fc39b  op=39  LOCAL_U8_STORE         sz=2
+0x002fc39d  op=71  PUSH_CONST_0           sz=1
+0x002fc39e  op=39  LOCAL_U8_STORE         sz=2
+0x002fc3a0  op=38  LOCAL_U8_LOAD          sz=2
+0x002fc3a2  op=25  PUSH_CONST_U8          sz=2
+0x002fc3a4  op=58  INE_JZ                 sz=3 -> 0x2fc432
+0x002fc3a7  op=53  GLOBAL_U16_LOAD        sz=3 GLOBAL LOAD 65068
+0x002fc3aa  op=56  JZ                     sz=3 -> 0x2fc3d1
+0x002fc3ad  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 77568
+0x002fc3b1  op=56  JZ                     sz=3 -> 0x2fc3c0
+0x002fc3b4  op=64  PUSH_CONST_U24         sz=4
+0x002fc3b8  op=66  STRING                 sz=1
+0x002fc3b9  op=5d  CALL                   sz=4 -> 0x315922
+0x002fc3bd  op=55  J                      sz=3 -> 0x2fc3c9
+0x002fc3c0  op=64  PUSH_CONST_U24         sz=4
+0x002fc3c4  op=66  STRING                 sz=1
+0x002fc3c5  op=5d  CALL                   sz=4 -> 0x315922
+0x002fc3c9  op=70  PUSH_CONST_M1          sz=1
+0x002fc3ca  op=63  GLOBAL_U24_STORE       sz=4 GLOBAL STORE 77542
+0x002fc3ce  op=2e  LEAVE                  sz=3 {'argcount': 2, 'rcount': 0}
+0x002fc3d1  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 77568
+0x002fc3d5  op=56  JZ                     sz=3 -> 0x2fc416
+0x002fc3d8  op=2c  NATIVE                 sz=4 NATIVE idx=1284 {'args': 0, 'rets': 1}
+0x002fc3dc  op=06  INOT                   sz=1
+0x002fc3dd  op=2a  DUP                    sz=1
+0x002fc3de  op=06  INOT                   sz=1
+0x002fc3df  op=56  JZ                     sz=3 -> 0x2fc3e7
+0x002fc3e2  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 80362
+0x002fc3e6  op=20  IOR                    sz=1
+0x002fc3e7  op=2a  DUP                    sz=1
+0x002fc3e8  op=06  INOT                   sz=1
+0x002fc3e9  op=56  JZ                     sz=3 -> 0x2fc3f0
+0x002fc3ec  op=53  GLOBAL_U16_LOAD        sz=3 GLOBAL LOAD 65064
+0x002fc3ef  op=20  IOR                    sz=1
+0x002fc3f0  op=2a  DUP                    sz=1
+0x002fc3f1  op=06  INOT                   sz=1
+0x002fc3f2  op=56  JZ                     sz=3 -> 0x2fc3f9
+0x002fc3f5  op=53  GLOBAL_U16_LOAD        sz=3 GLOBAL LOAD 65065
+0x002fc3f8  op=20  IOR                    sz=1
+0x002fc3f9  op=56  JZ                     sz=3 -> 0x2fc413 <== GATE
+0x002fc3fc  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 78678
+0x002fc400  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 78680
+0x002fc404  op=5b  ILT_JZ                 sz=3 -> 0x2fc410
+0x002fc407  op=64  PUSH_CONST_U24         sz=4
+0x002fc40b  op=66  STRING                 sz=1
+0x002fc40c  op=5d  CALL                   sz=4 -> 0x315922
+0x002fc410  op=2e  LEAVE                  sz=3 {'argcount': 2, 'rcount': 0}
+0x002fc413  op=55  J                      sz=3 -> 0x2fc432
+0x002fc416  op=62  GLOBAL_U24_LOAD        sz=4 GLOBAL LOAD 80362
+0x002fc41a  op=2a  DUP                    sz=1
+0x002fc41b  op=06  INOT                   sz=1
+0x002fc41c  op=56  JZ                     sz=3 -> 0x2fc423
+0x002fc41f  op=53  GLOBAL_U16_LOAD        sz=3 GLOBAL LOAD 65064
+0x002fc422  op=20  IOR                    sz=1
+0x002fc423  op=56  JZ                     sz=3 -> 0x2fc432
+0x002fc426  op=64  PUSH_CONST_U24         sz=4
+0x002fc42a  op=66  STRING                 sz=1
+0x002fc42b  op=5d  CALL                   sz=4 -> 0x315922
+0x002fc42f  op=2e  LEAVE                  sz=3 {'argcount': 2, 'rcount': 0}
+0x002fc432  op=38  LOCAL_U8_LOAD          sz=2
+0x002fc434  op=43  PUSH_CONST_S16         sz=3
+0x002fc437  op=66  STRING                 sz=1
+0x002fc438  op=2c  NATIVE                 sz=4 NATIVE idx=103 {'args': 2, 'rets': 1}
+0x002fc43c  op=2b  DROP                   sz=1
+0x002fc43d  op=71  PUSH_CONST_0           sz=1
+0x002fc43e  op=2c  NATIVE                 sz=4 NATIVE idx=1013 {'args': 1, 'rets': 0}
+0x002fc442  op=5d  CALL                   sz=4 -> 0x316d2b
+0x002fc446  op=65  SWITCH                 sz=20 {'count': 3, 'entries': [(0, 3130461), (2, 3130476), (1, 3130491)]}
+0x002fc45a  op=55  J                      sz=3 -> 0x2fc48a
+0x002fc45d  op=71  PUSH_CONST_0           sz=1
+0x002fc45e  op=39  LOCAL_U8_STORE         sz=2
+0x002fc460  op=71  PUSH_CONST_0           sz=1
+0x002fc461  op=5d  CALL                   sz=4 -> 0x57dc
+0x002fc465  op=2c  NATIVE                 sz=4 NATIVE idx=1013 {'args': 1, 'rets': 0}
+0x002fc469  op=55  J                      sz=3 -> 0x2fc4aa
+0x002fc46c  op=73  PUSH_CONST_2           sz=1
+0x002fc46d  op=39  LOCAL_U8_STORE         sz=2
+0x002fc46f  op=73  PUSH_CONST_2           sz=1
+0x002fc470  op=5d  CALL                   sz=4 -> 0x57dc
+0x002fc474  op=2c  NATIVE                 sz=4 NATIVE idx=1013 {'args': 1, 'rets': 0}
