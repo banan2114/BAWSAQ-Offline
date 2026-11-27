@@ -1,0 +1,76 @@
+name: bawsaq-e2a-probe
+
+on:
+  push:
+    paths:
+      - 'tools/bawsaq-e2a-probe/**'
+      - '.github/workflows/bawsaq-e2a-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download SHVDNE v1.1.0.6 reference assembly
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $url = 'https://github.com/Chiheb-Bacha/ScriptHookVDotNetEnhanced/releases/download/v1.1.0.6/ScriptHookVDotNetEnhanced-v1.1.0.6.zip'
+          Invoke-WebRequest -Uri $url -OutFile shvdne.zip
+          Expand-Archive -Path shvdne.zip -DestinationPath shvdne -Force
+          $dll = Get-ChildItem -Path shvdne -Recurse -Filter 'ScriptHookVDotNet3.dll' | Select-Object -First 1
+          if (-not $dll) { throw 'ScriptHookVDotNet3.dll not found in SHVDNE v1.1.0.6 zip' }
+          New-Item -ItemType Directory -Force -Path tools/bawsaq-e2a-probe/lib | Out-Null
+          Copy-Item $dll.FullName tools/bawsaq-e2a-probe/lib/ScriptHookVDotNet3.dll -Force
+          $h = Get-FileHash tools/bawsaq-e2a-probe/lib/ScriptHookVDotNet3.dll -Algorithm SHA256
+          Write-Host "REF_SHA256=$($h.Hash)"
+
+      - name: Build (dotnet SDK, net48)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          dotnet build tools/bawsaq-e2a-probe/BawsaqE2aThreadProbe.csproj -c Release --nologo -v minimal
+          $dll = 'tools/bawsaq-e2a-probe/bin/Release/BawsaqE2aThreadProbe.dll'
+          if (-not (Test-Path $dll)) { throw "output dll missing: $dll" }
+          $outHash = (Get-FileHash $dll -Algorithm SHA256).Hash
+          $refHash = (Get-FileHash tools/bawsaq-e2a-probe/lib/ScriptHookVDotNet3.dll -Algorithm SHA256).Hash
+          Write-Host "OUT_SHA256=$outHash"
+          New-Item -ItemType Directory -Force -Path tools/bawsaq-e2a-probe/dist | Out-Null
+          Copy-Item $dll tools/bawsaq-e2a-probe/dist/BawsaqE2aThreadProbe.dll -Force
+          $stamp = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+          $lines = @(
+            "$outHash  BawsaqE2aThreadProbe.dll",
+            "built_at=$stamp",
+            "workflow_run=$env:GITHUB_RUN_ID",
+            "shvdne_release=Chiheb-Bacha/ScriptHookVDotNetEnhanced v1.1.0.6",
+            "shvdne_reference_sha256=$refHash"
+          )
+          Set-Content -Path tools/bawsaq-e2a-probe/dist/SHA256SUMS.txt -Value $lines -Encoding ascii
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BawsaqE2aThreadProbe
+          path: |
+            tools/bawsaq-e2a-probe/dist/BawsaqE2aThreadProbe.dll
+            tools/bawsaq-e2a-probe/dist/SHA256SUMS.txt
+
+      - name: Commit built DLL to the branch
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/bawsaq-e2a-probe/dist/
+          if git diff --cached --quiet; then
+            echo "dist/ already up to date"
+          else
+            git commit -m "ci: built BawsaqE2aThreadProbe.dll (SHVDNE v1.1.0.6 reference) [skip ci]"
+            git push
+          fi

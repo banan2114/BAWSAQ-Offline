@@ -31,7 +31,8 @@ def rotl64(v: int, n: int) -> int:
 
 class YSC:
     def __init__(self, path):
-        raw = open(path, 'rb').read()
+        with open(path, 'rb') as fp:
+            raw = fp.read()
         self.raw_size = len(raw)
         self.sha256 = __import__('hashlib').sha256(raw).hexdigest()
         if raw[:4] != b'RSC7':
@@ -149,6 +150,7 @@ class YSC:
             'static_count': self.h_static_count, 'globals_count': self.globals_count,
             'globals_block_index': self.globals_block_index, 'globals_base': self.globals_base,
             'globals_signature': self.h_globals_signature,
+            'globals_signature_hex': hex(self.h_globals_signature & 0xFFFFFFFF),
             'natives_count': self.h_natives_count, 'string_size': self.h_string_size,
         }
 

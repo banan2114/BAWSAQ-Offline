@@ -11,6 +11,10 @@ RAGE Script VM. **Ни одно игровое файл-изменение не 
 - [`e2-data-flow.md`](e2-data-flow.md) — карта структур `Global_57379`, `Global_60260`, `Global_114990.f_20573`, конвейера `STAT_COMMUNITY_*`, UI и торговли.
 - [`e2-architecture.md`](e2-architecture.md) — минимальная офлайн-архитектура BAWSAQ (компоненты A–D, зависимости, риски и план шагов E2a–E2d).
 
+Материалы этапа E2a (идентификация активных YSC и декодирование `*2.ysc`):
+- [`e2a-script-resolution.md`](e2a-script-resolution.md) — подтверждение активной пары `appinternet1.ysc` + `stock_controller1.ysc` (`update2.rpf`) в `2.0.1158.16`, анализ приоритета RPF, аудит SHVDNE `v1.1.0.6` / read-only диагностика `BawsaqE2aThreadProbe` и повторная верификация выводов E2.
+- [`e2a-format-analysis.md`](e2a-format-analysis.md) — разбор формата `*2.ysc` (`x64b.rpf`, `v1` 128 опкодов, Day-1/1.27 нативы), обновление `tools/ysc_tool.py` + `tools/ysc_disasm.py` и результаты автотестов `tools/test_ysc_tools.py`.
+
 ---
 
 ## 0. Статус: подтверждено / гипотеза / не подтверждено

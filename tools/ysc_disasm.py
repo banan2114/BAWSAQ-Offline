@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""YSC disassembler for GTA V (sequential opcodes, gen8/gen9 Enhanced).
+"""YSC disassembler for GTA V (v1 128-opcode gen8/launch and v2 131-opcode gen8/gen9).
 
 Port of operand-size logic from maybegreat/GTA-V-Script-Decompiler (ScriptFile.cs)
 and opcode semantics from Jaycadox/ysc-utils (disassemble.rs).
+The v1 128-opcode table omits opcodes 94..96 (LOCAL_U24, LOCAL_U24_LOAD,
+LOCAL_U24_STORE), shifting raw opcodes >= 94 up by +3 relative to OPCODES.
 
 Usage:
-  ysc_disasm.py info <file.ysc> [--crossmap map.json]
-  ysc_disasm.py funcs <file.ysc>            # function table
-  ysc_disasm.py func <file.ysc> <index>     # pretty-print one function
-  ysc_disasm.py natives <file.ysc>          # native table (hash, count)
-  ysc_disasm.py find-native <file.ysc> NAME [NAME...]   # call sites by name (needs crossmap)
-  ysc_disasm.py find-global <file.ysc> IDX [IDX...]     # global refs by absolute index
+  ysc_disasm.py info <file.ysc> [--crossmap map.json] [--table auto|v1|v2]
+  ysc_disasm.py funcs <file.ysc> [--table auto|v1|v2]            # function table
+  ysc_disasm.py func <file.ysc> <index> [map.json] [--table auto|v1|v2]
+  ysc_disasm.py natives <file.ysc> [map.json]
+  ysc_disasm.py find-native <file.ysc> NAME [NAME...] [map.json] [--table auto|v1|v2]
+  ysc_disasm.py find-global <file.ysc> IDX [IDX...] [--table auto|v1|v2]
   ysc_disasm.py build-crossmap <file.ysc> <decompiled.c> <out.json>
 """
 import json
@@ -46,6 +48,23 @@ OPCODES = [
     "PUSH_CONST_FM1", "PUSH_CONST_F0", "PUSH_CONST_F1", "PUSH_CONST_F2", "PUSH_CONST_F3",
     "PUSH_CONST_F4", "PUSH_CONST_F5", "PUSH_CONST_F6", "PUSH_CONST_F7", "IS_BIT_SET",
 ]
+
+OPCODES_V1 = OPCODES[:94] + OPCODES[97:]
+OPCODE_TABLES = ("v1", "v2")
+
+
+def map_opcode(raw_op: int, table: str) -> int:
+    """Map raw bytecode opcode byte to canonical v2 (0..130) index."""
+    if table == "v2":
+        if not (0 <= raw_op < len(OPCODES)):
+            raise ValueError(f"unknown v2 opcode {raw_op}")
+        return raw_op
+    if table == "v1":
+        if not (0 <= raw_op < len(OPCODES_V1)):
+            raise ValueError(f"unknown v1 opcode {raw_op}")
+        return raw_op + 3 if raw_op >= 94 else raw_op
+    raise ValueError(f"unknown opcode table {table!r} (expected 'auto', 'v1', or 'v2')")
+
 
 # fixed operand sizes (opcode -> bytes); ENTER/SWITCH/NATIVE handled specially
 OP_SIZE = {}
@@ -102,12 +121,13 @@ def i16le(b, i):
 
 
 class Instr:
-    __slots__ = ("off", "op", "name", "size", "args", "jump", "native_idx", "native_hash",
+    __slots__ = ("off", "op", "raw_op", "name", "size", "args", "jump", "native_idx", "native_hash",
                  "global_idx", "global_kind", "str_key", "func_enter")
 
-    def __init__(self, off, op, name, size, args=None):
+    def __init__(self, off, op, name, size, args=None, raw_op=None):
         self.off = off
         self.op = op
+        self.raw_op = op if raw_op is None else raw_op
         self.name = name
         self.size = size
         self.args = args or {}
@@ -121,62 +141,122 @@ class Instr:
 
 
 class Disassembler:
-    def __init__(self, ysc: YSC):
+    def __init__(self, ysc: YSC, opcode_table: str = "auto"):
         self.ysc = ysc
         self.code = ysc.code()
         self.native_table = ysc.native_table()
         self.instrs = []
         self.functions = []   # (enter_index, offset, name, pcount, vcount, rcount)
+        self.opcode_table = None
+        self.opcode_count = None
         self._last_push = 0
-        self._parse()
+        self._parse(opcode_table)
 
-    def _parse(self):
+    def _parse(self, opcode_table: str = "auto"):
+        if opcode_table == "auto":
+            # rsc_version <= 10 (e.g. x64b base scripts) uses v1 (128 opcodes);
+            # rsc_version >= 12 (update2/Enhanced) uses v2 (131 opcodes).
+            candidates = ("v1", "v2") if self.ysc.rsc_version <= 10 else ("v2", "v1")
+            errors = {}
+            for cand in candidates:
+                try:
+                    self._parse_with_table(cand)
+                    self.opcode_table = cand
+                    self.opcode_count = len(OPCODES_V1) if cand == "v1" else len(OPCODES)
+                    return
+                except ValueError as exc:
+                    errors[cand] = str(exc)
+            raise ValueError(
+                f"failed to decode bytecode for rsc_version={self.ysc.rsc_version} "
+                f"({candidates[0]}: {errors[candidates[0]]}; "
+                f"{candidates[1]}: {errors[candidates[1]]})"
+            )
+        if opcode_table not in OPCODE_TABLES:
+            raise ValueError(f"unknown opcode_table {opcode_table!r} (expected 'auto', 'v1', or 'v2')")
+        self._parse_with_table(opcode_table)
+        self.opcode_table = opcode_table
+        self.opcode_count = len(OPCODES_V1) if opcode_table == "v1" else len(OPCODES)
+
+    def _parse_with_table(self, table: str):
         code = self.code
         n = len(code)
         pos = 0
         func_idx = -1
-        last_leave_off = -3
+        self.instrs = []
+        self.functions = []
+        self._last_push = 0
+        ins_by_off = {}
+        enter_offs = set()
         while pos < n:
-            op = code[pos]
-            if op >= len(OPCODES):
-                raise ValueError(f"unknown opcode {op} at {pos:#x}")
+            raw_op = code[pos]
+            try:
+                op = map_opcode(raw_op, table)
+            except ValueError as exc:
+                raise ValueError(f"{exc} at {pos:#x}") from exc
             name = OPCODES[op]
             if op == 45:  # ENTER
+                if pos + 5 > n:
+                    raise ValueError(f"truncated ENTER at {pos:#x}")
                 namelen = code[pos + 4]
+                size = 5 + namelen
+                if pos + size > n:
+                    raise ValueError(f"truncated ENTER name at {pos:#x}")
+                if self.functions:
+                    prev = self.functions[-1]
+                    if prev["leave_off"] is None:
+                        raise ValueError(f"function {prev['index']} has no LEAVE before ENTER at {pos:#x}")
+                    for k in range(prev["end_i"] + 1, len(self.instrs)):
+                        if self.instrs[k].op not in (0, 85):
+                            raise ValueError(
+                                f"function {prev['index']} has unexpected trailing op "
+                                f"{self.instrs[k].name} after LEAVE before ENTER at {pos:#x}"
+                            )
                 fname_bytes = code[pos + 5: pos + 5 + namelen]
                 fname = fname_bytes.split(b"\x00")[0].decode("latin1", "replace")
                 pcount = code[pos + 1]
                 vcount = u16le(code, pos + 2)
-                size = 5 + namelen
                 # rcount lives at the LEAVE: code[leave+2]
                 ins = Instr(pos, op, name, size, {"pcount": pcount, "vcount": vcount,
-                                                  "name": fname, "namelen": namelen})
+                                                  "name": fname, "namelen": namelen},
+                            raw_op=raw_op)
                 func_idx += 1
                 ins.func_enter = func_idx
+                enter_offs.add(pos)
                 self.functions.append({"index": func_idx, "off": pos, "name": fname,
                                        "pcount": pcount, "vcount": vcount,
                                        "leave_off": None, "rcount": None,
-                                       "start_i": len(self.instrs)})
+                                       "start_i": len(self.instrs), "end_i": None})
             elif op == 46:  # LEAVE
+                if pos + 3 > n:
+                    raise ValueError(f"truncated LEAVE at {pos:#x}")
+                if not self.functions:
+                    raise ValueError(f"LEAVE before any ENTER at {pos:#x}")
                 ins = Instr(pos, op, name, 3, {"argcount": code[pos + 1],
-                                               "rcount": code[pos + 2]})
-                if self.functions:
-                    f = self.functions[-1]
-                    f["leave_off"] = pos
-                    f["rcount"] = code[pos + 2]
-                    f["end_i"] = len(self.instrs)
+                                               "rcount": code[pos + 2]},
+                            raw_op=raw_op)
+                f = self.functions[-1]
+                f["leave_off"] = pos
+                f["rcount"] = code[pos + 2]
+                f["end_i"] = len(self.instrs)
             elif op == 44:  # NATIVE
+                if pos + 4 > n:
+                    raise ValueError(f"truncated NATIVE at {pos:#x}")
                 packed = code[pos + 1]
                 idx = (code[pos + 2] << 8) | code[pos + 3]
-                ins = Instr(pos, op, name, 4, {"args": packed >> 2, "rets": packed & 3})
+                ins = Instr(pos, op, name, 4, {"args": packed >> 2, "rets": packed & 3},
+                            raw_op=raw_op)
                 ins.native_idx = idx
                 if idx < len(self.native_table):
                     ins.native_hash = self.native_table[idx]
                 else:
                     raise ValueError(f"native index {idx} out of range at {pos:#x}")
             elif op == 101:  # SWITCH
+                if pos + 2 > n:
+                    raise ValueError(f"truncated SWITCH at {pos:#x}")
                 count = code[pos + 1]
                 size = 2 + 6 * count
+                if pos + size > n:
+                    raise ValueError(f"truncated SWITCH table at {pos:#x}")
                 entries = []
                 for k in range(count):
                     base = pos + 2 + 6 * k
@@ -185,12 +265,15 @@ class Disassembler:
                     # C# Instruction.GetSwitchTarget (non-RDR2): Offset+8+index*6+jrel
                     target = pos + 8 + 6 * k + jrel
                     entries.append((val, target))
-                ins = Instr(pos, op, name, size, {"count": count, "entries": entries})
+                ins = Instr(pos, op, name, size, {"count": count, "entries": entries},
+                            raw_op=raw_op)
             else:
                 sz = OP_SIZE[op]
                 if sz < 0:
                     raise ValueError(f"unhandled special op {name} at {pos:#x}")
-                ins = Instr(pos, op, name, 1 + sz)
+                if pos + 1 + sz > n:
+                    raise ValueError(f"truncated {name} at {pos:#x}")
+                ins = Instr(pos, op, name, 1 + sz, raw_op=raw_op)
                 if op in JUMP_OPS:
                     rel = i16le(code, pos + 1)
                     ins.jump = pos + 3 + rel
@@ -213,22 +296,65 @@ class Disassembler:
                 elif op == 100:  # PUSH_CONST_U24
                     self._last_push = u24le(code, pos + 1)
                 elif 112 <= op <= 129:  # PUSH_CONST_M1/0..7/FM1/F0..F7
-                    table = {112: 0xFFFFFFFF, 113: 0, 114: 1, 115: 2, 116: 3, 117: 4,
-                             118: 5, 119: 6, 120: 7, 121: 0xFFFFFFFF}
-                    self._last_push = table.get(op, 0)
+                    table_vals = {112: 0xFFFFFFFF, 113: 0, 114: 1, 115: 2, 116: 3, 117: 4,
+                                  118: 5, 119: 6, 120: 7, 121: 0xFFFFFFFF}
+                    self._last_push = table_vals.get(op, 0)
                 elif op == 102:  # STRING
                     ins.str_key = self._last_push
+            ins_by_off[pos] = len(self.instrs)
             self.instrs.append(ins)
             pos += ins.size
         if pos != n:
             raise ValueError(f"parse overrun: {pos} != {n}")
-        # validate function starts/ends
+        # validate function table consistency
         for f in self.functions:
             i = f["start_i"]
             if self.instrs[i].op != 45:
                 raise ValueError(f"function {f['index']} does not start with ENTER")
             if f["leave_off"] is None or self.instrs[f["end_i"]].op != 46:
                 raise ValueError(f"function {f['index']} has no LEAVE")
+        if self.functions:
+            last_f = self.functions[-1]
+            for k in range(last_f["end_i"] + 1, len(self.instrs)):
+                if self.instrs[k].op not in (0, 85):
+                    raise ValueError(
+                        f"function {last_f['index']} has unexpected trailing op "
+                        f"{self.instrs[k].name} after final LEAVE"
+                    )
+        # validate all jump, switch, and call targets land on instruction boundaries
+        for ins in self.instrs:
+            if ins.op in JUMP_OPS:
+                if ins.jump not in ins_by_off:
+                    raise ValueError(f"invalid {ins.name} jump target {ins.jump:#x} at {ins.off:#x}")
+            elif ins.op == 93:  # CALL (direct ENTER or page-alignment NOP/J trampoline to ENTER)
+                if ins.jump not in ins_by_off:
+                    raise ValueError(f"invalid CALL target {ins.jump:#x} at {ins.off:#x}")
+                if ins.jump not in enter_offs:
+                    idx = ins_by_off[ins.jump]
+                    hops = 0
+                    while idx < len(self.instrs) and hops < 16:
+                        cur = self.instrs[idx]
+                        if cur.op == 45:
+                            break
+                        if cur.op == 0:  # NOP alignment padding
+                            idx += 1
+                        elif cur.op == 85 and cur.jump in ins_by_off:  # J trampoline
+                            idx = ins_by_off[cur.jump]
+                        else:
+                            raise ValueError(
+                                f"CALL target {ins.jump:#x} at {ins.off:#x} does not reach ENTER"
+                            )
+                        hops += 1
+                    else:
+                        raise ValueError(
+                            f"CALL target {ins.jump:#x} at {ins.off:#x} did not resolve to ENTER"
+                        )
+            elif ins.op == 101:  # SWITCH
+                for val, target in ins.args["entries"]:
+                    if target not in ins_by_off:
+                        raise ValueError(
+                            f"invalid SWITCH target {target:#x} (case {val}) at {ins.off:#x}"
+                        )
 
     # ---- lookups -------------------------------------------------------
     def find_natives(self, hashes):
@@ -384,18 +510,47 @@ def load_crossmap(path):
     return {int(k, 16): v for k, v in raw.items()}
 
 
+def _extract_flags(args):
+    """Extract --table <val> and --crossmap <path> without breaking positional CLI calls."""
+    table = "auto"
+    crossmap = None
+    pos = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--table" and i + 1 < len(args):
+            table = args[i + 1]
+            i += 2
+        elif a.startswith("--table="):
+            table = a.split("=", 1)[1]
+            i += 1
+        elif a == "--crossmap" and i + 1 < len(args):
+            crossmap = args[i + 1]
+            i += 2
+        elif a.startswith("--crossmap="):
+            crossmap = a.split("=", 1)[1]
+            i += 1
+        else:
+            pos.append(a)
+            i += 1
+    return table, crossmap, pos
+
+
 def main():
     if len(sys.argv) < 3:
         print(__doc__)
         return 2
     cmd, path = sys.argv[1], sys.argv[2]
-    rest = sys.argv[3:]
+    table, cm_flag, rest = _extract_flags(sys.argv[3:])
     if cmd == "info":
         ysc = YSC(path)
-        d = Disassembler(ysc)
-        cm = load_crossmap(rest[0]) if rest else None
+        d = Disassembler(ysc, opcode_table=table)
+        cm_path = cm_flag or (rest[0] if rest else None)
+        cm = load_crossmap(cm_path) if cm_path else None
         print(f"file: {path}")
-        print(f"script: {ysc.script_name}  code: {len(d.code)} bytes")
+        print(f"script: {ysc.script_name}  rsc_version: {ysc.rsc_version}  "
+              f"opcode_table: {d.opcode_table} ({d.opcode_count} opcodes)  "
+              f"code: {len(d.code)} bytes")
         print(f"functions: {len(d.functions)}  instructions: {len(d.instrs)}")
         print(f"native table: {len(d.native_table)} entries, "
               f"distinct: {len(set(d.native_table))}")
@@ -407,24 +562,27 @@ def main():
         names = [f["name"] for f in d.functions if f["name"]]
         print(f"named functions: {names[:20]}")
     elif cmd == "funcs":
-        d = Disassembler(YSC(path))
+        d = Disassembler(YSC(path), opcode_table=table)
         for f in d.functions:
             print(f"{f['index']:5d} {f['off']:07x} leave={f['leave_off'] and hex(f['leave_off'])} "
                   f"p={f['pcount']} v={f['vcount']} r={f['rcount']} '{f['name']}' "
                   f"natives={len(d.func_natives(f['index']))}")
     elif cmd == "func":
-        d = Disassembler(YSC(path))
-        cm = load_crossmap(rest[1]) if len(rest) > 1 else None
+        d = Disassembler(YSC(path), opcode_table=table)
+        cm_path = cm_flag or (rest[1] if len(rest) > 1 else None)
+        cm = load_crossmap(cm_path) if cm_path else None
         print(d.pretty(int(rest[0]), hash2name=cm))
     elif cmd == "natives":
         ysc = YSC(path)
         tab = ysc.native_table()
-        cm = load_crossmap(rest[0]) if rest else {}
+        cm_path = cm_flag or (rest[0] if rest else None)
+        cm = load_crossmap(cm_path) if cm_path else {}
         for i, h in enumerate(tab):
             print(f"{i:5d} {hex(h)} {cm.get(h, '')}")
     elif cmd == "find-native":
-        cm = load_crossmap(rest[-1]) if len(rest) > 1 and rest[-1].endswith(".json") else {}
-        wanted = rest[:-1] if len(rest) > 1 and rest[-1].endswith(".json") else rest
+        cm_path = cm_flag or (rest[-1] if len(rest) > 1 and rest[-1].endswith(".json") else None)
+        cm = load_crossmap(cm_path) if cm_path else {}
+        wanted = rest[:-1] if (not cm_flag and len(rest) > 1 and rest[-1].endswith(".json")) else rest
         name2hash = {}
         for h, nm in cm.items():
             name2hash.setdefault(nm, h)
@@ -434,7 +592,7 @@ def main():
                 hashes.append(name2hash[w])
             else:
                 print(f"WARNING: {w} not in crossmap")
-        d = Disassembler(YSC(path))
+        d = Disassembler(YSC(path), opcode_table=table)
         for fi, ins in d.find_natives(hashes):
             fname = d.functions[fi]["name"] if fi >= 0 else "?"
             nm = cm.get(ins.native_hash, "?")
@@ -442,7 +600,7 @@ def main():
                   f"args={ins.args['args']} rets={ins.args['rets']}")
     elif cmd == "find-global":
         idxs = [int(x) for x in rest]
-        d = Disassembler(YSC(path))
+        d = Disassembler(YSC(path), opcode_table=table)
         for fi, ins in d.find_globals(idxs):
             fname = d.functions[fi]["name"] if fi >= 0 else "?"
             print(f"func {fi} '{fname}' @ {ins.off:#x}: Global_{ins.global_idx} {ins.global_kind}")
