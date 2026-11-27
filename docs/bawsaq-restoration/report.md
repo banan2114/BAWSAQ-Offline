@@ -7,6 +7,9 @@ RAGE Script VM. **Ни одно игровое файл-изменение не 
 
 Промежуточный документ по анализу стека: [`interim-vm-stack-analysis.md`](interim-vm-stack-analysis.md).
 Байтовый дамп контекста ворот: [`func9474-gate-dump.txt`](func9474-gate-dump.txt).
+Материалы этапа E2 (статический аудит данных и офлайн-архитектура):
+- [`e2-data-flow.md`](e2-data-flow.md) — карта структур `Global_57379`, `Global_60260`, `Global_114990.f_20573`, конвейера `STAT_COMMUNITY_*`, UI и торговли.
+- [`e2-architecture.md`](e2-architecture.md) — минимальная офлайн-архитектура BAWSAQ (компоненты A–D, зависимости, риски и план шагов E2a–E2d).
 
 ---
 
