@@ -1,0 +1,42 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <RootNamespace>BawsaqE1Diagnostics</RootNamespace>
+    <AssemblyName>BawsaqE1Diagnostics</AssemblyName>
+    <TargetFramework>net48</TargetFramework>
+    <!-- Sources must stay compatible with the in-box .NET Framework csc.exe
+         (C# 5) so build.cmd works on any Windows machine without SDKs. -->
+    <LangVersion>5</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!-- Assembly attributes live in Properties/AssemblyInfo.cs (shared with build.cmd). -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Deterministic>true</Deterministic>
+    <!-- Reference assembly: downloaded by CI into lib\, or pointed at by the
+         user's installed ScriptHookVDotNet3.dll (SHVDNE v1.1.0.6) via
+         -p:SHVDNEPath=... or the SHVDNEPath environment variable. -->
+    <SHVDNEPath Condition="'$(SHVDNEPath)' == ''">$(MSBuildProjectDirectory)\lib\ScriptHookVDotNet3.dll</SHVDNEPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <DebugType>portable</DebugType>
+    <Optimize>false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <DebugType>none</DebugType>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="ScriptHookVDotNet3">
+      <HintPath>$(SHVDNEPath)</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+</Project>

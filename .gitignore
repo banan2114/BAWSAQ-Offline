@@ -376,3 +376,5 @@ ScriptHookVDotNet*.log
 
 # Local GTA development settings
 BawsaqOffline.GTA/Local.props
+# SHVDNE reference assembly fetched by CI / local builds (never committed)
+tools/bawsaq-diagnostics/lib/
