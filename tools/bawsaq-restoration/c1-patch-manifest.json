@@ -1,0 +1,112 @@
+{
+  "manifest_version": 1,
+  "experiment": "C1-preflight",
+  "variant": "C1",
+  "description": "Stack-balanced UI gate bypass in appinternet1::func_9474 for GTA V Enhanced 2.0.1158.16 runtime test (empty market, LCN untouched).",
+  "target_game": {
+    "title": "Grand Theft Auto V Enhanced",
+    "version": "2.0.1158.16",
+    "process_name": "GTA5_Enhanced.exe",
+    "scrdbg_target_build": "1158.16-1.73",
+    "requires_battleye_disabled": true
+  },
+  "source_ysc": {
+    "path": "game-scripts/appinternet1.ysc",
+    "sha256": "dc24bf0851d41981148e9b37f425536512074c70a47b7d6475e4c31f9ee2d473",
+    "file_size": 1379054,
+    "rsc_version": 12,
+    "sys_size": 3440640,
+    "script_name": "appInternet",
+    "name_hash": "0x6a172273",
+    "name_hash_u32": 1780032115,
+    "globals_signature": "0xa2be51ac",
+    "globals_signature_u32": 2730381740,
+    "code_size": 3242324,
+    "code_page_size": 16384,
+    "code_page_count": 198,
+    "native_count": 1315,
+    "opcode_table": "v2"
+  },
+  "target_function": {
+    "index": 9474,
+    "enter_pc": "0x2FC392",
+    "leave_pc": "0x2FCCD3",
+    "pcount": 2,
+    "vcount": 12,
+    "rcount": 0,
+    "insn_count": 882,
+    "basic_block_count": 123
+  },
+  "expected_page": {
+    "page_index": 191,
+    "page_size": 16384,
+    "page_base_pc": "0x2FC000",
+    "code_blocks_base_sys_offset": "0x346160",
+    "page_ptr_entry_sys_offset": "0x346758",
+    "page_sys_offset": "0x304000"
+  },
+  "signature": {
+    "start_pc": "0x2FC3D8",
+    "end_pc": "0x2FC3FC",
+    "length": 36,
+    "hex": "2c010504062a0656050062ea3901202a065604005328fe202a065604005329fe20561700",
+    "spaced_hex": "2C 01 05 04 06 2A 06 56 05 00 62 EA 39 01 20 2A 06 56 04 00 53 28 FE 20 2A 06 56 04 00 53 29 FE 20 56 17 00",
+    "expected_occurrences": 1
+  },
+  "patches": [
+    {
+      "id": "c1_site_1_signed_online",
+      "pc": "0x2FC3D8",
+      "page_index": 191,
+      "in_page_offset": "0x03D8",
+      "sys_offset": "0x3043D8",
+      "length": 4,
+      "original_hex": "2c010504",
+      "original_spaced": "2C 01 05 04",
+      "original_op": "NATIVE",
+      "original_desc": "NATIVE args=0 rets=1 idx=1284 NETWORK::NETWORK_IS_SIGNED_ONLINE",
+      "patched_hex": "72000000",
+      "patched_spaced": "72 00 00 00",
+      "patched_ops": ["PUSH_CONST_1", "NOP", "NOP", "NOP"],
+      "stack_delta_original": 1,
+      "stack_delta_patched": 1,
+      "prev_insn": {
+        "pc": "0x2FC3D5",
+        "length": 3,
+        "op": "JZ"
+      },
+      "next_insn": {
+        "pc": "0x2FC3DC",
+        "length": 1,
+        "op": "INOT"
+      }
+    },
+    {
+      "id": "c1_site_2_global_65065",
+      "pc": "0x2FC3F5",
+      "page_index": 191,
+      "in_page_offset": "0x03F5",
+      "sys_offset": "0x3043F5",
+      "length": 3,
+      "original_hex": "5329fe",
+      "original_spaced": "53 29 FE",
+      "original_op": "GLOBAL_U16_LOAD",
+      "original_desc": "GLOBAL_U16_LOAD Global_65065",
+      "patched_hex": "710000",
+      "patched_spaced": "71 00 00",
+      "patched_ops": ["PUSH_CONST_0", "NOP", "NOP"],
+      "stack_delta_original": 1,
+      "stack_delta_patched": 1,
+      "prev_insn": {
+        "pc": "0x2FC3F2",
+        "length": 3,
+        "op": "JZ"
+      },
+      "next_insn": {
+        "pc": "0x2FC3F8",
+        "length": 1,
+        "op": "IOR"
+      }
+    }
+  ]
+}
